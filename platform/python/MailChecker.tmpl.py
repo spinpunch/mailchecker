@@ -9,7 +9,7 @@ if sys.version_info[0] >= 3:
 
 class MailChecker(object):
 
-    blacklist = set([{{& listSTR}}])
+    blacklist = { {{& listSTR}} }
     valid_matcher = re.compile(r"\A{{& unanchoredRegexpString }}\Z")
 
     @classmethod
@@ -34,3 +34,7 @@ class MailChecker(object):
     @classmethod
     def is_valid_email_format(cls, email):
         return bool(email) and cls.valid_matcher.search(email) is not None
+
+    @classmethod
+    def add_custom_domains(cls, domains = []):
+        cls.blacklist.update(domains)

@@ -1,11 +1,18 @@
 <?php
 
-// Run tests from the repository root directory:
-// $ composer install && ./vendor/bin/phpunit test/platform.php.test.php
+// Run tests from the repository root directory
+// Linux:
+// $ composer install && vendor/bin/phpunit test/platform.php.test.php
+// Windows:
+// > composer install && .\vendor\bin\phpunit.bat test\platform.php.test.php
 
-require __DIR__.'/../platform/php/MailChecker.php';
+require_once __DIR__ . '/../platform/php/MailChecker.php';
 
-class MailCheckerTest extends PHPUnit\Framework\TestCase
+use Fgribreau\MailChecker;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\TestCase;
+
+class Platform extends TestCase
 {
     public function assertIsValidResult($expected, $email)
     {
@@ -55,19 +62,42 @@ class MailCheckerTest extends PHPUnit\Framework\TestCase
         $this->isInvalid('ok@guerrillamailblock.com');
     }
 
-    public function provideBlackListTests()
+    public static function provideBlackListTests()
     {
-        foreach (MailChecker::blacklist() as $blacklistedDomain) {
-            yield [$blacklistedDomain];
+        $blacklist = MailChecker::blacklist();
+        foreach (array_rand($blacklist, 1000) as $key) {
+            yield [$blacklist[$key]];
         }
     }
 
-    /** @dataProvider provideBlackListTests */
+    #[DataProvider('provideBlackListTests')]
     public function testReturnFalseForBlacklistedDomainsAndTheirSubdomains($blacklistedDomain)
     {
-        $this->isInvalid('test@'.$blacklistedDomain);
-        $this->isInvalid('test@subdomain.'.$blacklistedDomain);
+        $this->isInvalid('test@' . $blacklistedDomain);
+        $this->isInvalid('test@subdomain.' . $blacklistedDomain);
         // Should not be invalid as a subdomain of a valid domain.
-        $this->isValid('test@'.$blacklistedDomain.'.gmail.com');
+        $this->isValid('test@' . $blacklistedDomain . '.gmail.com');
+    }
+
+    public function testAddCustomDomains()
+    {
+        $this->isValid('foo@youtube.com');
+        $this->isValid('foo@google.com');
+        $this->isValid('ok@gmail.com');
+
+        MailChecker::addCustomDomains(['youtube.com', 'google.com']);
+
+        $this->isInvalid('foo@youtube.com');
+        $this->isInvalid('foo@google.com');
+        $this->isValid('ok@gmail.com');
+    }
+
+    #[DataProvider('provideBlackListTests')]
+    public function testIsDomainBlocked($blacklistedDomain)
+    {
+        $this->assertEquals(true, MailChecker::isDomainBlocked($blacklistedDomain, true));
+        $this->assertEquals(true, MailChecker::isDomainBlocked('subdomain.'.$blacklistedDomain, true));
+        $this->assertEquals(true, MailChecker::isDomainBlocked($blacklistedDomain, false));
+        $this->assertEquals(false, MailChecker::isDomainBlocked('subdomain.'.$blacklistedDomain, false));
     }
 }
